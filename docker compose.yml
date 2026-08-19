@@ -1,0 +1,155 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "9696:9696"      # Prowlarr
+      - "7878:7878"      # Radarr
+      - "8989:8989"      # Sonarr
+      - "9117:9117"      # Jackett
+      - "5055:5055"      # Seerr
+      - "8191:8191"      # FlareSolverr
+      - "8888:8888"      # HTTP-прокси (для Jellyfin)
+    environment:
+      - VPN_SERVICE_PROVIDER=custom
+	  
+      # Ваши настройки для подключения к внешнему хосту
+	  
+      - TZ=Europe/Moscow
+      # Открываем файрвол Gluetun для домашней сети и Docker подсетей
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.32.0/24,192.168.31.0/24,172.16.0.0/12,172.18.0.0/16,172.19.0.0/16
+      - HTTPPROXY=on
+      - HTTPPROXY_LISTENING_PORT=8888
+    volumes:
+      - /opt/app/gluetun/config:/gluetun
+    restart: unless-stopped
+    networks:
+      - vpn_network
+      - local_network
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: "container:gluetun"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/app/prowlarr/config:/config
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: "container:gluetun"
+    environment:
+      - LOG_LEVEL=info
+      - TZ=Europe/Moscow
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: "container:gluetun"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/app/radarr/config:/config
+      - /mnt/TrueNAS:/data
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    network_mode: "container:gluetun"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/app/sonarr/config:/config
+      - /mnt/TrueNAS:/data
+    restart: unless-stopped
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    init: true
+    container_name: seerr
+    network_mode: "container:gluetun" 
+    environment:
+      - TZ=Europe/Moscow
+      - LOG_LEVEL=info
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/app/seerr/config:/app/config
+    restart: unless-stopped
+        
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    network_mode: "container:gluetun" 
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/app/jackett/config:/config
+      - /mnt/TrueNAS:/downloads
+    restart: unless-stopped
+        
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    ports:
+      - "8080:8080"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - WEBUI_PORT=8080
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /opt/app/qbittorrent/config:/config
+      - /mnt/TrueNAS:/data
+    restart: unless-stopped
+    networks:
+      - local_network 
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    ports:
+      - "8096:8096"
+    volumes:
+      - /opt/app/jellyfin/config:/config
+      - /opt/app/jellyfin/cache:/cache
+      - /mnt/TrueNAS:/data
+    restart: unless-stopped
+    environment:
+      - JELLYFIN_TRANSLITERATOR_ID=
+      - JELLYFIN_PublishedServerUrl=http://IP_LXC:8096 # Не забудьте вставить IP для подключения к серверу
+      - TZ=Europe/Moscow
+      # прокси для того чтобы обновлялись метаданные
+      - HTTP_PROXY=http://gluetun:8888
+      - HTTPS_PROXY=http://gluetun:8888
+      - NO_PROXY=localhost,127.0.0.1,172.16.0.0/12,172.18.0.0/16,172.19.0.0/16,# у меня две сети дома, для нормальной работы отредактировать под свои 192.168.32.0/24,192.168.31.0/24
+    networks:
+      - vpn_network
+      - local_network
+
+networks:
+  vpn_network:
+    driver: bridge
+  local_network:
+    driver: bridge
