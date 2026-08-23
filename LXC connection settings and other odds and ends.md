@@ -12,6 +12,10 @@ apt update && apt install openssh-server
 nano /etc/ssh/sshd_config.
 ```
 Разрешите вход под root, если это нужно: найдите строчку PermitRootLogin и установите значение yes.
+Сменить пароль в консоль хоста через **passwd** и перезапустить службу 
+```
+systemctl restart ssh
+```
 
 Чтобы tmdb.org открывался с ру ip, нужно в настройках adguard home, добавить строки в Upstream DNS-серверы
 ---
