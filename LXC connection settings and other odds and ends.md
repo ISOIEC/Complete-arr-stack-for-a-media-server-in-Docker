@@ -9,7 +9,7 @@ apt update && apt install openssh-server
 ```
 Откройте файл настройки: 
 ```
-nano /etc/ssh/sshd_config.
+nano /etc/ssh/sshd_config
 ```
 Разрешите вход под root, если это нужно: найдите строчку PermitRootLogin и установите значение yes.
 Сменить пароль в консоль хоста через **passwd** и перезапустить службу 
