@@ -73,6 +73,9 @@ ls -ls /mnt/TrueNAS
 ```
 Дальше добавим строки в конфиг LXC чтобы он мог монтировать их, а так же заранее добавим строки необходимые для Gluetun
 ```
+nano /etc/pve/nodes/*ВашаНода*/lxc/100.conf
+```
+```
 mp0: /mnt/TrueNAS/,mp=/mnt/TrueNAS/
 lxc.cgroup2.devices.allow: c 10:200 rwm
 lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
